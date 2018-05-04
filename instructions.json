@@ -1,0 +1,19 @@
+{
+	"main_script": "tennis.js",
+	"icon": "tennis.png",
+	"width": 800,
+	"height": 600,
+	"resize": "free",
+	"animation": false,
+	"dependencies": [
+	],
+	"load": {
+		"value": 4
+	},
+	"title": "tennis",
+	"version": "1.0.0",
+	"description": "SAGE2 application tennis",
+	"keywords": [ "sage2", "tennis" ],
+	"author": "takuya shizukuishi <sititou70@gmail.com>",
+	"license": "SAGE2-Software-License"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "tennis",
+  "version": "1.0.0",
+  "main": "tennis.js",
+  "devDependencies": {
+    "eslint": "latest"
+  },
+  "scripts": {
+    "lint": "eslint -c eslintrc tennis.js"
+  },
+  "author": "takuya shizukuishi <sititou70@gmail.com>",
+  "license": "BSD-2-Clause",
+  "description": "SAGE2 application tennis"
+}
