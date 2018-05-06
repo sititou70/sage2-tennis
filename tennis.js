@@ -8,6 +8,39 @@
 "use strict";
 
 /* global  */
+class Random {
+  constructor(seed = 88675123) {
+    this.x = 123456789;
+    this.y = 362436069;
+    this.z = 521288629;
+    this.w = seed;
+    this.seed = seed;
+  }
+
+  init() {
+    this.x = 123456789;
+    this.y = 362436069;
+    this.z = 521288629;
+    this.w = this.seed;
+    this.seed = this.seed;
+  }
+
+  // XorShift
+  next() {
+    let t;
+ 
+    t = this.x ^ (this.x << 11);
+    this.x = this.y; this.y = this.z; this.z = this.w;
+    return this.w = (this.w ^ (this.w >>> 19)) ^ (t ^ (t >>> 8)); 
+  }
+}
+
+const XorShift = new Random();
+Math.random = (() => {
+  const number_range = 1000;
+  return () => Math.abs(XorShift.next()) % number_range / number_range;
+})();
+
 class Point{
   constructor(x, y){
     this.x = x;
@@ -206,7 +239,7 @@ var tennis = SAGE2_App.extend({
     if(data.state === "down"){
       console.log("keydown", data.code);
       if(data.code === 66){
-        // i
+        // b
         init_ball();
         this.refresh(date);
       }
@@ -214,6 +247,7 @@ var tennis = SAGE2_App.extend({
       if(data.code === 73){
         // i
         init_game();
+        XorShift.init();
         this.refresh(date);
       }
     }
