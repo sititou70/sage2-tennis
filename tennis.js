@@ -8,7 +8,7 @@
 "use strict";
 
 /* global  */
-class Random {
+class XorShift {
   constructor(seed = 88675123) {
     this.x = 123456789;
     this.y = 362436069;
@@ -33,14 +33,33 @@ class Random {
     this.x = this.y; this.y = this.z; this.z = this.w;
     return this.w = (this.w ^ (this.w >>> 19)) ^ (t ^ (t >>> 8)); 
   }
+
+  serialize(){
+    return {
+      x: this.x,
+      y: this.y,
+      z: this.z,
+      w: this.w,
+      seed: this.seed,
+    };
+  }
+
+  setState(state){
+    this.x = state.x;
+    this.y = state.y;
+    this.z = state.z;
+    this.w = state.w;
+    this.seed = state.seed;
+  }
 }
 
-const XorShift = new Random();
+const xor_shift = new XorShift();
 Math.random = (() => {
   const number_range = 1000;
-  return () => Math.abs(XorShift.next()) % number_range / number_range;
+  return () => Math.abs(xor_shift.next()) % number_range / number_range;
 })();
 
+//basic classes
 class Point{
   constructor(x, y){
     this.x = x;
@@ -55,6 +74,18 @@ class Point{
     this.x += point.x;
     this.y += point.y;
     return this;
+  }
+
+  serialize(){
+    return {
+      x: this.x,
+      y: this.y,
+    };
+  }
+
+  setState(state){
+    this.x = state.x;
+    this.y = state.y;
   }
 }
 
@@ -72,6 +103,20 @@ class Bar{
   draw(canvas_context){
     canvas_context.fillRect(this.position.x + this.thickness, this.position.y - this.length / 2, this.thickness * -1, this.length);
     return this;
+  }
+
+  serialize(){
+    return {
+      position: this.position.serialize(),
+      speed: this.speed,
+      score: this.score,
+    };
+  }
+
+  setState(state){
+    this.position.setState(state.position);
+    this.speed = state.speed;
+    this.score = state.score;
   }
 }
 
@@ -93,7 +138,12 @@ class Ball{
       const right_straddled = (bar.position.x - (this.position.x + this.r)) * (bar.position.x - (next_position.x + this.r)) < 0;
       const left_straddled = (bar.position.x - (this.position.x - this.r)) * (bar.position.x - (next_position.x - this.r)) < 0;
       const straddled = right_straddled || left_straddled;
-      if(included && straddled)new_speed.x *= -1;
+      if(included && straddled){
+        const harf_width = width / 2;
+        const left_pos_and_speed = this.position.x < harf_width && this.speed.x < 0;
+        const right_pos_and_speed = this.position.x > harf_width && this.speed.x > 0;
+        if(left_pos_and_speed || right_pos_and_speed)new_speed.x *= -1;
+      }
     }
 
     return new_speed;
@@ -110,8 +160,21 @@ class Ball{
     canvas_context.fillRect(this.position.x - this.r, this.position.y - this.r, this.r, this.r);
     return this;
   }
+
+  serialize(){
+    return {
+      position: this.position.serialize(),
+      speed: this.speed.serialize(),
+    };
+  }
+
+  setState(state){
+    this.position.setState(state.position);
+    this.speed.setState(state.speed);
+  }
 }
 
+//game
 let width;
 let height;
 let interval_id = undefined;
@@ -121,6 +184,7 @@ let canvas_context;
 let players_bar;
 let opponents_bar;
 let ball;
+let sync_clock_timer_id;
 
 const init_ball = () => {
   const ball_dx = (7 + Math.random() * 3) * (Math.random() < 0.5 ? 1 : -1);
@@ -185,7 +249,7 @@ const draw = (canvas_context) => {
   canvas_context.fillText(opponents_bar.score, width - score_margin, score_margin);
 };
 
-
+//sage app
 var tennis = SAGE2_App.extend({
   init: function(data) {
     // Create canvas
@@ -208,6 +272,17 @@ var tennis = SAGE2_App.extend({
     canvas_context = canvas.getContext("2d");
 
     init_game();
+
+    //start sync clock
+    if(clientID === 0)sync_clock_timer_id = setInterval(() => broadcast({
+      app: this.div.id,
+      func: "sync",
+      data: {
+        opponents_bar: opponents_bar.serialize(),
+        ball: ball.serialize(),
+        xor_shift: xor_shift.serialize(),
+      }
+    }), 3000);
   },
 
   load: function(date) {
@@ -232,6 +307,16 @@ var tennis = SAGE2_App.extend({
 
   quit: function() {
     // Make sure to delete stuff (timers, ...)
+    clearInterval(interval_id);
+    clearInterval(sync_clock_timer_id);
+  },
+
+  sync: function(data) {
+    if(clientID === 0)return;
+    console.log("sync", data);
+    opponents_bar.setState(data.opponents_bar);
+    ball.setState(data.ball);
+    xor_shift.setState(data.xor_shift);
   },
 
   event: function(eventType, position, user_id, data, date) {
